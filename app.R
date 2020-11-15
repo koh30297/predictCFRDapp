@@ -152,12 +152,19 @@ compute_risk <- function(model,year,cftr_score,sex,mi,rs1964986,rs4077468,rs7903
       year >= 1980 ~ "3_med",
       year >= 1970 ~ "4_secondmed")
   sex <- ifelse(sex=="F", 0, 1)
-  ind <- data.frame(when_birth=when_birth,score_factor=score_factor,gender=sex,mi=mi,rs1964986=rs1964986,
-                    rs4077469=rs4077468,rs7903146=rs7903146,rs959173=rs959173,rs7822917=rs7822917,rs12318809=rs12318809)
+  ind <- data.frame(when_birth=when_birth,score_factor=score_factor,gender=sex,mi=mi,rs1964986=2-rs1964986,
+                    rs4077469=2-rs4077468,rs7903146=rs7903146,rs959173=2-rs959173,rs7822917=rs7822917,rs12318809=rs12318809)
+  select_coef <- summary(model)$coef
+  select <- c("score_factor","gender","rs12318809","rs959173",
+              "rs1964986","rs4077469","rs7822917","mi","rs7903146")
+  risk_geno <- as.matrix(ind[,select]) %*% as.matrix(select_coef[c(1,2,6,7,8,9,10,11,12),1]) 
+  risk_when_birth <- with(ind, ifelse(when_birth=="4_secondmed", select_coef[5,1], 
+                                      ifelse(when_birth=="3_med", select_coef[4,1], 
+                                             ifelse(when_birth=='2_secondyoung', select_coef[3,1], 0))))
+  risk_score <- as.numeric(risk_geno + risk_when_birth)
+  #risk_score <- predict(model, ind, type='lp')
   
-  risk_score <- predict(model, ind, type='lp')
-  
-  
+  print(risk_score)
   
   risk_score
 }
@@ -167,10 +174,12 @@ compute_risk <- function(model,year,cftr_score,sex,mi,rs1964986,rs4077468,rs7903
 # cfrd_new <- readRDS('C:/Users/jerry/OneDrive/2020_CFRD/app_data/cfrd_new.rds')
 # age_event <- readRDS('C:/Users/jerry/OneDrive/2020_CFRD/app_data/age_event.rds')
 
-risk <- readRDS('app_data/risk.rds')
-cox_cftrscore <- readRDS('app_data/model.rds')
-cfrd_new <- readRDS('app_data/cfrd_new.rds')
-age_event <- readRDS('app_data/age_event.rds')
+#risk <- readRDS('app_data/risk.rds')
+#cox_cftrscore <- readRDS('app_data/model.rds')
+risk <- readRDS('app_data/risk_new.rds')
+cox_cftrscore <- readRDS('app_data/model_new.rds')
+#cfrd_new <- readRDS('app_data/cfrd_new.rds')
+#age_event <- readRDS('app_data/age_event.rds')
 
 ui <- fluidPage(
   headerPanel("Personalized CFRD Risk Based on Genetic and Clinical Measures at Birth"),
@@ -180,12 +189,12 @@ ui <- fluidPage(
     selectInput('cftr2', 'CFTR Genotype Mutation 2', choices=mutation),
     selectInput('sex', 'Sex', choices = c("Male"='M', "Female"='F')),
     selectInput('mi', 'Meconium Ileus (Y/N)', choices = c('Y'=1, 'N'=0)),
-    selectInput('rs1964986', 'rs1964986 (A)', choices = c(0,1,2)),
-    selectInput('rs4077468', 'rs4077468 (A)', choices = c(0,1,2)),
-    selectInput('rs7903146', 'rs7903146 (T)', choices = c(0,1,2)),
-    selectInput('rs959173', 'rs959173 (T)', choices = c(0,1,2)),
-    selectInput('rs7822917', 'rs7822917 (T)', choices = c(0,1,2)),
-    selectInput('rs12318809', 'rs12318809 (G)', choices = c(0,1,2)),
+    selectInput('rs1964986', 'PRSS1: rs1964986 (Number of A alleles)', choices = c(0,1,2)),
+    selectInput('rs4077468', 'SLC26A9: rs4077468 (Number of A alleles)', choices = c(0,1,2)),
+    selectInput('rs7903146', 'TCF7L2: rs7903146 (Number of T alleles)', choices = c(0,1,2)),
+    selectInput('rs959173', 'CAV1: rs959173 (Number of T alleles)', choices = c(0,1,2)),
+    selectInput('rs7822917', 'NRG1: rs7822917 (Number of T alleles)', choices = c(0,1,2)),
+    selectInput('rs12318809', 'SLC5A8: rs12318809 (Number of G alleles)', choices = c(0,1,2)),
     actionButton('update', 'Update')
   ),
   mainPanel(plotOutput('plot1')),
@@ -247,15 +256,17 @@ server <- function(input, output){
     # risk_score <- compute_risk(cox_cftrscore,year(),cftr_score(),sex(),
     #                            mi(),rs1964986(),rs4077468(),rs7903146(),
     #                            rs16879142(),rs1729533(),rs12318809())
-   
-    percentile <- round(100*sum(risk<risk_score())/dim(risk)[1])
-    
+    print(dim(risk))
+    percentile <- round(100*sum(risk < risk_score())/dim(risk)[1])
+    print(percentile)
     ggplot(risk) + 
       geom_density(fill='steelblue1', col='steelblue1', alpha=0.3, aes(x=CFRD)) + 
       labs(y='Density', x='CFRD Risk', title="CFRD Risk Distribution in Canadian Gene Modifier Study") + 
-      annotate('text',x=risk_score(),y=0.4,label=paste('CFRD Risk: ',percentile,'th percentile',sep=''), size=6, col='red') +
+      annotate('text',x=risk_score(),y=0.4,label=paste('CFRD Risk: ',percentile,'th percentile',sep=''), size=7, col='red') +
       geom_point(x=risk_score(),y=0.3,size=5,col='red') +
-      geom_segment(aes(x=risk_score(),y=0,xend=risk_score(),yend=0.3), col='red') 
+      geom_segment(aes(x=risk_score(),y=0,xend=risk_score(),yend=0.3), col='red') +
+      theme(plot.title=element_text(size=16, face='bold'),
+            axis.title=element_text(size=14,face="bold"))
   })
   
   output$plot2 <- renderPlot({
@@ -272,7 +283,9 @@ server <- function(input, output){
       ylim(0,1) +
       xlab("Age") + 
       ylab("Observed CFRD Prevalence") + 
-      ggtitle("Observed CFRD Prevalence Rates Across Ages") 
+      ggtitle("Observed CFRD Prevalence Rates Across Ages") +
+      theme(plot.title=element_text(size=16, face='bold'),
+            axis.title=element_text(size=14,face="bold"))
   })
   
 }
