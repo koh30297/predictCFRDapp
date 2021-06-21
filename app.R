@@ -189,10 +189,10 @@ ui <- fluidPage(
     selectInput('cftr2', 'CFTR Genotype Mutation 2', choices=mutation),
     selectInput('sex', 'Sex', choices = c("Male"='M', "Female"='F')),
     selectInput('mi', 'Meconium Ileus (Y/N)', choices = c('Y'=1, 'N'=0)),
-    selectInput('rs1964986', 'PRSS1: rs1964986 (Number of A alleles)', choices = c(0,1,2)),
+    selectInput('rs1964986', 'PRSS1: rs1964986 (Number of C alleles)', choices = c(0,1,2)),
     selectInput('rs4077468', 'SLC26A9: rs4077468 (Number of A alleles)', choices = c(0,1,2)),
     selectInput('rs7903146', 'TCF7L2: rs7903146 (Number of T alleles)', choices = c(0,1,2)),
-    selectInput('rs959173', 'CAV1: rs959173 (Number of T alleles)', choices = c(0,1,2)),
+    selectInput('rs959173', 'CAV1: rs959173 (Number of C alleles)', choices = c(0,1,2)),
     selectInput('rs7822917', 'NRG1: rs7822917 (Number of T alleles)', choices = c(0,1,2)),
     selectInput('rs12318809', 'SLC5A8: rs12318809 (Number of G alleles)', choices = c(0,1,2)),
     actionButton('update', 'Update')
